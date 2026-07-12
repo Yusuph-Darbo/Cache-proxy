@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/cli.ts",
     "build": "tsc",
-    "start": "node dist/cli.js",
-    "test": "tsx watch src/test.ts"
+    "start": "node dist/cli.js"
   },
   "repository": {
     "type": "git",
