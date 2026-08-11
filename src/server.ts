@@ -16,23 +16,28 @@ export async function startServer(port: number, origin: string): Promise<void> {
   app.use(express.json());
 
   app.use(async (req: Request, res: Response) => {
+    const start = performance.now();
     const key = buildCacheKey(req);
 
     try {
       const cached = await cacheStore.get(key);
 
       if (cached) {
+        const duration = performance.now() - start;
         res.set(cached.headers);
         res.set("X-Cache", "HIT");
+        res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
         res.status(cached.status).send(cached.body);
         return;
       }
 
       const response = await forwardToOrigin(req, origin);
       await cacheStore.set(key, response);
+      const duration = performance.now() - start;
 
       res.set(response.headers);
       res.set("X-Cache", "MISS");
+      res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
       res.status(response.status).send(response.body);
     } catch (err) {
       console.error(`Failed to handle ${req.method} ${req.originalUrl}:`, err);
