@@ -1,5 +1,6 @@
 import { createClient } from "redis";
 import type { OriginResponse } from "../proxy.js";
+import { parse } from "node:path";
 
 const client = createClient();
 
@@ -22,20 +23,31 @@ function serialise(response: OriginResponse): string {
   });
 }
 
-export async function get(key: string): Promise<string | null> {
-  const value = await client.get(key);
-  return value;
+function deserialise(raw: string): OriginResponse {
+  const parsed = JSON.parse(raw);
+  return {
+    status: parsed.status,
+    headers: parsed.headers,
+    body: Buffer.from(parsed.body, "base64"),
+  };
+}
+
+export async function get(key: string): Promise<OriginResponse | null> {
+  const raw = await client.get(key);
+  return raw ? deserialise(raw) : null;
 }
 
 export async function set(
   key: string,
-  value: string,
+  value: OriginResponse,
   ttl: number | null,
 ): Promise<void> {
+  const serialised = serialise(value);
+
   if (ttl) {
-    await client.set(key, ttl, { EX: ttl });
+    await client.set(key, serialised, { EX: ttl });
   } else {
-    await client.set(key, value);
+    await client.set(key, serialised);
   }
 }
 
