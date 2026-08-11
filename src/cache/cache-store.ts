@@ -1,6 +1,5 @@
 import { createClient } from "redis";
 import type { OriginResponse } from "../proxy.js";
-import { parse } from "node:path";
 
 const client = createClient();
 
@@ -40,7 +39,7 @@ export async function get(key: string): Promise<OriginResponse | null> {
 export async function set(
   key: string,
   value: OriginResponse,
-  ttl: number | null,
+  ttl: number | null = null,
 ): Promise<void> {
   const serialised = serialise(value);
 
