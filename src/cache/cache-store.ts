@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import type { OriginResponse } from "../proxy.js";
 
 const client = createClient();
 
@@ -8,6 +9,17 @@ export async function connect(): Promise<void> {
   if (!client.isOpen) {
     await client.connect();
   }
+}
+
+// Redis stores strings only, so the response object gets JSON-encoded.
+// Buffer can't survive JSON.stringify as-is, so it's converted to base64
+// on the way in and back to a Buffer on the way out.
+function serialise(response: OriginResponse): string {
+  return JSON.stringify({
+    status: response.status,
+    headers: response.headers,
+    body: response.body.toString("base64"),
+  });
 }
 
 export async function get(key: string): Promise<string | null> {
