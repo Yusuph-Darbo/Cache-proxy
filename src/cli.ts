@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 import { startServer } from "./server.js";
-import { clear as clearCache } from "./cache/cache-store.js";
+import {
+  connect as connectCache,
+  clear as clearCache,
+} from "./cache/cache-store.js";
 
 interface CliOptions {
   port?: number;
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
   const options = parseArgs(args);
 
   if (options.clearCache) {
+    await connectCache();
     await clearCache();
     console.log("Cache cleared");
     process.exit(0);
