@@ -4,50 +4,53 @@ import { forwardToOrigin } from "./proxy.js";
 import * as cacheStore from "./cache/cache-store.js";
 
 function buildCacheKey(req: Request): string {
-  // Method matters
-  // GET /products != DELETE /products
-  return `${req.method}:${req.originalUrl}`;
+    // Method matters
+    // GET /products != DELETE /products
+    return `${req.method}:${req.originalUrl}`;
 }
 
 export async function startServer(port: number, origin: string): Promise<void> {
-  await cacheStore.connect();
+    await cacheStore.connect();
 
-  const app: Express = express();
-  app.use(express.json());
+    const app: Express = express();
+    app.use(express.json());
 
-  app.use(async (req: Request, res: Response) => {
-    const start = performance.now();
-    const key = buildCacheKey(req);
+    app.use(async (req: Request, res: Response) => {
+        const start = performance.now();
+        const key = buildCacheKey(req);
 
-    try {
-      const cached = await cacheStore.get(key);
+        try {
+            const cached = await cacheStore.get(key);
 
-      if (cached) {
-        const duration = performance.now() - start;
-        res.set(cached.headers);
-        res.set("X-Cache", "HIT");
-        res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
-        res.status(cached.status).send(cached.body);
-        return;
-      }
+            if (cached) {
+                const duration = performance.now() - start;
+                res.set(cached.headers);
+                res.set("X-Cache", "HIT");
+                res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
+                res.status(cached.status).send(cached.body);
+                return;
+            }
 
-      const response = await forwardToOrigin(req, origin);
-      await cacheStore.set(key, response);
-      const duration = performance.now() - start;
+            const response = await forwardToOrigin(req, origin);
+            await cacheStore.set(key, response);
+            const duration = performance.now() - start;
 
-      res.set(response.headers);
-      res.set("X-Cache", "MISS");
-      res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
-      res.status(response.status).send(response.body);
-    } catch (err) {
-      console.error(`Failed to handle ${req.method} ${req.originalUrl}:`, err);
-      res.status(502).json({ error: "Bad gateway" });
-    }
-  });
+            res.set(response.headers);
+            res.set("X-Cache", "MISS");
+            res.set("X-Response-Time", `${duration.toFixed(2)}ms`);
+            res.status(response.status).send(response.body);
+        } catch (err) {
+            console.error(
+                `Failed to handle ${req.method} ${req.originalUrl}:`,
+                err,
+            );
+            res.status(502).json({ error: "Bad gateway" });
+        }
+    });
 
-  app.listen(port, () => {
-    console.log(
-      `Caching proxy running on port ${port}, forwarding to ${origin}`,
-    );
-  });
+    app.listen(port, () => {
+        console.log(
+            `Caching proxy running on port ${port}, forwarding to ${origin}`,
+        );
+    });
 }
